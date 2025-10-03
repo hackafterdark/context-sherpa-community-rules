@@ -1,0 +1,163 @@
+name: Update Rule Index
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ast-grep/rules/**/*.yml'
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    name: Regenerate index.json with new rules
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Generate index.json
+        run: |
+          echo "🔍 Scanning rules directory for YAML files..."
+
+          # Find all rule YAML files
+          RULE_FILES=$(find ast-grep/rules -name "*.yml" -type f)
+
+          if [ -z "$RULE_FILES" ]; then
+            echo "❌ No rule files found!"
+            exit 1
+          fi
+
+          echo "📋 Found rule files:"
+          echo "$RULE_FILES"
+          echo ""
+
+          # Start building the index array
+          INDEX_JSON="[\n"
+
+          FIRST=true
+
+          for rule_file in $RULE_FILES; do
+            echo "📖 Processing rule: $rule_file"
+
+            # Check if file exists and is readable
+            if [ ! -f "$rule_file" ]; then
+              echo "❌ Rule file not found: $rule_file"
+              continue
+            fi
+
+            # Extract metadata using grep and sed for better reliability
+            RULE_ID=$(grep '^id:' "$rule_file" | head -1 | sed 's/id: *//' | tr -d ' ')
+            RULE_LANGUAGE=$(grep '^language:' "$rule_file" | head -1 | sed 's/language: *//' | tr -d ' ')
+            RULE_MESSAGE=$(grep '^message:' "$rule_file" | head -1 | sed 's/message: *//' | tr -d '"' | tr -d "'")
+            RULE_SEVERITY=$(grep '^severity:' "$rule_file" | head -1 | sed 's/severity: *//' | tr -d ' ')
+
+            # Extract metadata fields
+            METADATA_AUTHOR=$(grep -A 10 '^metadata:' "$rule_file" | grep 'author:' | head -1 | sed 's/.*author: *//' | tr -d '"' | tr -d "'" | tr -d ' ')
+            METADATA_DESCRIPTION=$(grep -A 10 '^metadata:' "$rule_file" | grep 'description:' | head -1 | sed 's/.*description: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//')
+            METADATA_TAGS=$(grep -A 10 '^metadata:' "$rule_file" | grep 'tags:' | head -1 | sed 's/.*tags: *//' | tr -d '"' | tr -d "'" | tr ',' ' ' | sed 's/[[:space:]]*/ /g')
+
+            # Build tags array
+            TAGS_ARRAY="["
+            if [ -n "$METADATA_TAGS" ] && [ "$METADATA_TAGS" != " " ]; then
+              FIRST_TAG=true
+              for tag in $METADATA_TAGS; do
+                if [ -n "$tag" ] && [ "$tag" != " " ]; then
+                  if [ "$FIRST_TAG" = false ]; then
+                    TAGS_ARRAY="$TAGS_ARRAY,"
+                  fi
+                  TAGS_ARRAY="$TAGS_ARRAY\"$tag\""
+                  FIRST_TAG=false
+                fi
+              done
+            fi
+            TAGS_ARRAY="$TAGS_ARRAY]"
+
+            # Get relative path for the rule file
+            RULE_PATH=$(echo "$rule_file" | sed 's|^ast-grep/||')
+
+            echo "  ID: $RULE_ID"
+            echo "  Language: $RULE_LANGUAGE"
+            echo "  Path: $RULE_PATH"
+            echo "  Author: $METADATA_AUTHOR"
+            echo "  Tags: $TAGS_ARRAY"
+            echo ""
+
+            # Add comma if not first entry
+            if [ "$FIRST" = false ]; then
+              INDEX_JSON="$INDEX_JSON,\n"
+            fi
+            FIRST=false
+
+            # Add this rule to the index
+            INDEX_JSON="$INDEX_JSON  {\n"
+            INDEX_JSON="$INDEX_JSON    \"id\": \"$RULE_ID\",\n"
+            INDEX_JSON="$INDEX_JSON    \"tool\": \"ast-grep\",\n"
+            INDEX_JSON="$INDEX_JSON    \"path\": \"$RULE_PATH\",\n"
+            INDEX_JSON="$INDEX_JSON    \"language\": \"$RULE_LANGUAGE\",\n"
+            INDEX_JSON="$INDEX_JSON    \"author\": \"$METADATA_AUTHOR\",\n"
+            INDEX_JSON="$INDEX_JSON    \"message\": \"$RULE_MESSAGE\",\n"
+            INDEX_JSON="$INDEX_JSON    \"severity\": \"$RULE_SEVERITY\",\n"
+            INDEX_JSON="$INDEX_JSON    \"description\": \"$METADATA_DESCRIPTION\",\n"
+            INDEX_JSON="$INDEX_JSON    \"tags\": $TAGS_ARRAY\n"
+            INDEX_JSON="$INDEX_JSON  }"
+          done
+
+          INDEX_JSON="$INDEX_JSON\n]"
+
+          # Write the index file
+          echo "$INDEX_JSON" > index.json
+
+          echo "✅ Generated index.json with $(echo "$RULE_FILES" | wc -l) rules"
+
+      - name: Validate generated index.json
+        run: |
+          echo "🔍 Validating generated index.json..."
+          if ! jq empty index.json 2>/dev/null; then
+            echo "❌ Invalid JSON generated:"
+            cat index.json
+            exit 1
+          fi
+
+          RULE_COUNT=$(jq length index.json)
+          echo "✅ Valid JSON with $RULE_COUNT rules"
+
+      - name: Commit and push index.json
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Check if index.json has changed
+          if git diff --quiet index.json; then
+            echo "ℹ️ No changes to index.json"
+          else
+            echo "📝 Committing updated index.json..."
+            git add index.json
+            git commit -m "🤖 Update index.json with latest rules
+
+            Generated from $(git log --oneline -1 | cut -d' ' -f1) - $(git log --oneline -1 | cut -f2-)
+            "
+            git push
+
+            echo "✅ Successfully updated index.json"
+          fi
+
+      - name: Summary
+        run: |
+          RULE_COUNT=$(jq length index.json)
+          echo "## ✅ Index Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Index contains $RULE_COUNT rules**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recent Rules:" >> $GITHUB_STEP_SUMMARY
+          jq -r '.[] | "- \(.id) (\(.language)) - \(.message)"' index.json | head -10 >> $GITHUB_STEP_SUMMARY
