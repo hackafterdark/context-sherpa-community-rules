@@ -24,8 +24,12 @@ jobs:
             ast-grep/rules/**/*.yml
             ast-grep/tests/**/*.{bash,bats,cgi,command,env,fcgi,ksh,sh,sh.in,tmux,tool,zsh,c,h,cc,hpp,cpp,c++,hh,cxx,cu,ino,cs,css,ex,exs,go,hs,html,htm,xhtml,java,cjs,js,mjs,jsx,json,kt,ktm,kts,lua,nix,php,py,py3,pyi,bzl,rb,rbw,gemspec,rs,scala,sc,sbt,sol,swift,ts,cts,mts,tsx,yml,yaml}
 
-      - name: Set up ast-grep
-        uses: ast-grep/action@latest
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          curl -fsSL https://raw.githubusercontent.com/ast-grep/ast-grep/main/scripts/install.sh | bash
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         if: steps.changed-files.outputs.any_changed == 'true'
 
       - name: Validate rule and test pairs
@@ -35,7 +39,7 @@ jobs:
           echo "${{ steps.changed-files.outputs.all_changed_files }}"
 
           # Get all changed rule files
-          RULE_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | grep -E 'ast-grep/rules/.*\.yml$' | paste -sd ' ' -)
+          RULE_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E 'ast-grep/rules/.*\.yml' | tr '\n' ' ')
 
           if [ -n "$RULE_FILES" ]; then
             echo "Validating rule files: $RULE_FILES"
