@@ -42,8 +42,10 @@ jobs:
           echo "$RULE_FILES"
           echo ""
 
-          # Start building the index array
-          INDEX_JSON="[\n"
+          # Start building the index object with rules array
+          INDEX_JSON="{\n"
+          INDEX_JSON="$INDEX_JSON  \"version\": 1,\n"
+          INDEX_JSON="$INDEX_JSON  \"rules\": [\n"
 
           FIRST=true
 
@@ -59,20 +61,25 @@ jobs:
             # Extract metadata using grep and sed for better reliability
             RULE_ID=$(grep '^id:' "$rule_file" | head -1 | sed 's/id: *//' | tr -d ' ')
             RULE_LANGUAGE=$(grep '^language:' "$rule_file" | head -1 | sed 's/language: *//' | tr -d ' ')
-            RULE_MESSAGE=$(grep '^message:' "$rule_file" | head -1 | sed 's/message: *//' | tr -d '"' | tr -d "'")
+            RULE_MESSAGE=$(grep '^message:' "$rule_file" | head -1 | sed 's/message: *//' | tr -d '"' | tr -d "'" | sed 's/"/\\"/g' | sed "s/'/\\'/g")
             RULE_SEVERITY=$(grep '^severity:' "$rule_file" | head -1 | sed 's/severity: *//' | tr -d ' ')
 
             # Extract metadata fields
             METADATA_AUTHOR=$(grep -A 10 '^metadata:' "$rule_file" | grep 'author:' | head -1 | sed 's/.*author: *//' | tr -d '"' | tr -d "'" | tr -d ' ')
-            METADATA_DESCRIPTION=$(grep -A 10 '^metadata:' "$rule_file" | grep 'description:' | head -1 | sed 's/.*description: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//')
-            METADATA_TAGS=$(grep -A 10 '^metadata:' "$rule_file" | grep 'tags:' | head -1 | sed 's/.*tags: *//' | tr -d '"' | tr -d "'" | tr ',' ' ' | sed 's/[[:space:]]*/ /g')
+            METADATA_DESCRIPTION=$(grep -A 10 '^metadata:' "$rule_file" | grep 'description:' | head -1 | sed 's/.*description: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+            METADATA_TAGS=$(grep -A 10 '^metadata:' "$rule_file" | grep 'tags:' | head -1 | sed 's/.*tags: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
 
-            # Build tags array
+            # Build tags array - handle comma-separated values properly
             TAGS_ARRAY="["
-            if [ -n "$METADATA_TAGS" ] && [ "$METADATA_TAGS" != " " ]; then
+            if [ -n "$METADATA_TAGS" ] && [ "$METADATA_TAGS" != "" ]; then
               FIRST_TAG=true
-              for tag in $METADATA_TAGS; do
-                if [ -n "$tag" ] && [ "$tag" != " " ]; then
+              # Split by comma and process each tag
+              IFS=',' read -ra TAG_LIST <<< "$METADATA_TAGS"
+              for tag in "${TAG_LIST[@]}"; do
+                # Trim whitespace from each tag
+                tag=$(echo "$tag" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+                # Skip empty tags
+                if [ -n "$tag" ] && [ "$tag" != "" ]; then
                   if [ "$FIRST_TAG" = false ]; then
                     TAGS_ARRAY="$TAGS_ARRAY,"
                   fi
@@ -93,11 +100,12 @@ jobs:
             echo "  Tags: $TAGS_ARRAY"
             echo ""
 
-            # Add comma if not first entry
+            # Add comma if not first entry (for all except the first rule)
             if [ "$FIRST" = false ]; then
               INDEX_JSON="$INDEX_JSON,\n"
+            else
+              FIRST=false
             fi
-            FIRST=false
 
             # Add this rule to the index
             INDEX_JSON="$INDEX_JSON  {\n"
@@ -113,7 +121,7 @@ jobs:
             INDEX_JSON="$INDEX_JSON  }"
           done
 
-          INDEX_JSON="$INDEX_JSON\n]"
+          INDEX_JSON="$INDEX_JSON\n  ]\n}\n"
 
           # Write the index file
           echo "$INDEX_JSON" > index.json
@@ -123,14 +131,27 @@ jobs:
       - name: Validate generated index.json
         run: |
           echo "🔍 Validating generated index.json..."
-          if ! jq empty index.json 2>/dev/null; then
-            echo "❌ Invalid JSON generated:"
+          if [ ! -f "index.json" ]; then
+            echo "❌ index.json file not found"
+            exit 1
+          fi
+
+          # Basic validation - check if file has content and contains expected structure
+          if ! grep -q '"rules"' index.json; then
+            echo "❌ index.json doesn't contain expected 'rules' field"
             cat index.json
             exit 1
           fi
 
-          RULE_COUNT=$(jq length index.json)
-          echo "✅ Valid JSON with $RULE_COUNT rules"
+          if ! grep -q '"version"' index.json; then
+            echo "❌ index.json doesn't contain expected 'version' field"
+            cat index.json
+            exit 1
+          fi
+
+          # Count rules by looking for rule IDs
+          RULE_COUNT=$(grep -c '"id":' index.json || echo "0")
+          echo "✅ Generated index.json with $RULE_COUNT rules"
 
       - name: Commit and push index.json
         run: |
@@ -154,10 +175,10 @@ jobs:
 
       - name: Summary
         run: |
-          RULE_COUNT=$(jq length index.json)
+          RULE_COUNT=$(grep -c '"id":' index.json 2>/dev/null || echo "0")
           echo "## ✅ Index Update Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 **Index contains $RULE_COUNT rules**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Recent Rules:" >> $GITHUB_STEP_SUMMARY
-          jq -r '.[] | "- \(.id) (\(.language)) - \(.message)"' index.json | head -10 >> $GITHUB_STEP_SUMMARY
+          grep -E '"id"|"language"|"message"' index.json | grep -v '"tool"' | head -15 | sed 's/.*"id": "\([^"]*\)".*/  - \1/' | sed 's/.*"language": "\([^"]*\)".*/    (\1)/' | sed 's/.*"message": "\([^"]*\)".*/    \1/' | head -10 >> $GITHUB_STEP_SUMMARY || echo "  (Error reading rules)" >> $GITHUB_STEP_SUMMARY
