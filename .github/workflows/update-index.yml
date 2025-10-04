@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'ast-grep/rules/**/*.yml'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   update-index:
@@ -15,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
