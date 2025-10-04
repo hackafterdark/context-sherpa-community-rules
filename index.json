@@ -2,31 +2,50 @@
   "version": 1,
   "rules": [
     {
-      "id": "ast-grep-go-sql-injection",
+      "id": "ast-grep-go-unchecked-error",
       "tool": "ast-grep",
-      "path": "ast-grep/rules/go/security/sql-injection.yml",
+      "path": "rules/go/security/unchecked-error.yml",
       "language": "go",
       "author": "context-sherpa-community",
+      "message": "Error return value is not checked. Unhandled errors can lead to silent failures and unexpected behavior.",
+      "severity": "warning",
+      "description": "Detects function calls that return errors but where the error is not checked or handled. This helps prevent silent failures and improves code reliability.",
+      "tags": [
+        "error-handling",
+        "reliability",
+        "best-practices"
+      ]
+    },
+    {
+      "id": "ast-grep-go-sql-injection",
+      "tool": "ast-grep",
+      "path": "rules/go/security/sql-injection.yml",
+      "language": "go",
+      "author": "context-sherpa-community",
+      "message": "Database query uses string formatting (e.g., fmt.Sprintf), which is a SQL injection vulnerability. Use parameterized queries instead.",
+      "severity": "error",
+      "description": "Detects the use of string formatting functions like fmt.Sprintf inside database calls, which is a common SQL injection vector. Promotes the use of safe, parameterized queries.",
       "tags": [
         "security",
         "sql",
         "database",
         "injection"
-      ],
-      "description": "Detects the use of string formatting functions like fmt.Sprintf inside database calls, which is a common SQL injection vector. Promotes the use of safe, parameterized queries."
+      ]
     },
     {
-      "id": "ast-grep-go-unchecked-error",
+      "id": "go-no-sprintf-in-db-call",
       "tool": "ast-grep",
-      "path": "ast-grep/rules/go/correctness/unchecked-error.yml",
+      "path": "rules/go/security/no-sprintf-in-db-call.yml",
       "language": "go",
-      "author": "context-sherpa-community",
+      "author": "new-contributor",
+      "message": "Database query uses fmt.Sprintf, which is a SQL injection vulnerability. Use parameterized queries with placeholders ($1, $2, etc.) instead.",
+      "severity": "error",
+      "description": "Detects the use of fmt.Sprintf in database calls, which is a common SQL injection vulnerability.",
       "tags": [
-        "correctness",
-        "error-handling",
-        "bug-risk"
-      ],
-      "description": "Finds function calls that return an error as their final argument but the error is not assigned or checked, often by assigning it to the blank identifier `_`."
+        "security",
+        "injection",
+        "go"
+      ]
     }
   ]
 }
