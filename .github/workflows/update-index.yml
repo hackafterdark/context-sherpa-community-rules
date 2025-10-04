@@ -42,12 +42,8 @@ jobs:
           echo "$RULE_FILES"
           echo ""
 
-          # Start building the index object with rules array
-          INDEX_JSON="{\n"
-          INDEX_JSON="$INDEX_JSON  \"version\": 1,\n"
-          INDEX_JSON="$INDEX_JSON  \"rules\": [\n"
-
-          FIRST=true
+          # Use jq to build the JSON object incrementally
+          JSON_RULES="[]"
 
           for rule_file in $RULE_FILES; do
             echo "📖 Processing rule: $rule_file"
@@ -61,97 +57,65 @@ jobs:
             # Extract metadata using grep and sed for better reliability
             RULE_ID=$(grep '^id:' "$rule_file" | head -1 | sed 's/id: *//' | tr -d ' ')
             RULE_LANGUAGE=$(grep '^language:' "$rule_file" | head -1 | sed 's/language: *//' | tr -d ' ')
-            RULE_MESSAGE=$(grep '^message:' "$rule_file" | head -1 | sed 's/message: *//' | tr -d '"' | tr -d "'" | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+            RULE_MESSAGE=$(grep '^message:' "$rule_file" | head -1 | sed 's/message: *//' | sed 's/^"\(.*\)"$/\1/' | sed "s/'/\\'/g")
             RULE_SEVERITY=$(grep '^severity:' "$rule_file" | head -1 | sed 's/severity: *//' | tr -d ' ')
 
             # Extract metadata fields
             METADATA_AUTHOR=$(grep -A 10 '^metadata:' "$rule_file" | grep 'author:' | head -1 | sed 's/.*author: *//' | tr -d '"' | tr -d "'" | tr -d ' ')
-            METADATA_DESCRIPTION=$(grep -A 10 '^metadata:' "$rule_file" | grep 'description:' | head -1 | sed 's/.*description: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//' | sed 's/"/\\"/g' | sed "s/'/\\'/g")
+            METADATA_DESCRIPTION=$(grep -A 10 '^metadata:' "$rule_file" | grep 'description:' | head -1 | sed 's/.*description: *//' | sed 's/^"\(.*\)"$/\1/' | sed "s/'/\\'/g")
             METADATA_TAGS=$(grep -A 10 '^metadata:' "$rule_file" | grep 'tags:' | head -1 | sed 's/.*tags: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-
-            # Build tags array - handle comma-separated values properly
-            TAGS_ARRAY="["
-            if [ -n "$METADATA_TAGS" ] && [ "$METADATA_TAGS" != "" ]; then
-              FIRST_TAG=true
-              # Split by comma and process each tag
-              IFS=',' read -ra TAG_LIST <<< "$METADATA_TAGS"
-              for tag in "${TAG_LIST[@]}"; do
-                # Trim whitespace from each tag
-                tag=$(echo "$tag" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-                # Skip empty tags
-                if [ -n "$tag" ] && [ "$tag" != "" ]; then
-                  if [ "$FIRST_TAG" = false ]; then
-                    TAGS_ARRAY="$TAGS_ARRAY,"
-                  fi
-                  TAGS_ARRAY="$TAGS_ARRAY\"$tag\""
-                  FIRST_TAG=false
-                fi
-              done
-            fi
-            TAGS_ARRAY="$TAGS_ARRAY]"
 
             # Get relative path for the rule file
             RULE_PATH=$(echo "$rule_file" | sed 's|^ast-grep/||')
+
+            # Create a JSON object for the current rule
+            RULE_JSON=$(jq -n \
+              --arg id "$RULE_ID" \
+              --arg tool "ast-grep" \
+              --arg path "$RULE_PATH" \
+              --arg language "$RULE_LANGUAGE" \
+              --arg author "$METADATA_AUTHOR" \
+              --arg message "$RULE_MESSAGE" \
+              --arg severity "$RULE_SEVERITY" \
+              --arg description "$METADATA_DESCRIPTION" \
+              '{id: $id, tool: $tool, path: $path, language: $language, author: $author, message: $message, severity: $severity, description: $description}')
+
+            # Create a JSON array from the comma-separated tags
+            TAGS_JSON=$(echo "$METADATA_TAGS" | jq -R 'split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; ""))')
+
+            # Add the tags array to the rule object
+            RULE_JSON=$(echo "$RULE_JSON" | jq --argjson tags "$TAGS_JSON" '. + {tags: $tags}')
+
+            # Add the rule object to the main rules array
+            JSON_RULES=$(echo "$JSON_RULES" | jq ". + [$RULE_JSON]")
 
             echo "  ID: $RULE_ID"
             echo "  Language: $RULE_LANGUAGE"
             echo "  Path: $RULE_PATH"
             echo "  Author: $METADATA_AUTHOR"
-            echo "  Tags: $TAGS_ARRAY"
+            echo "  Tags: $TAGS_JSON"
             echo ""
-
-            # Add comma if not first entry (for all except the first rule)
-            if [ "$FIRST" = false ]; then
-              INDEX_JSON="$INDEX_JSON,\n"
-            else
-              FIRST=false
-            fi
-
-            # Add this rule to the index
-            INDEX_JSON="$INDEX_JSON  {\n"
-            INDEX_JSON="$INDEX_JSON    \"id\": \"$RULE_ID\",\n"
-            INDEX_JSON="$INDEX_JSON    \"tool\": \"ast-grep\",\n"
-            INDEX_JSON="$INDEX_JSON    \"path\": \"$RULE_PATH\",\n"
-            INDEX_JSON="$INDEX_JSON    \"language\": \"$RULE_LANGUAGE\",\n"
-            INDEX_JSON="$INDEX_JSON    \"author\": \"$METADATA_AUTHOR\",\n"
-            INDEX_JSON="$INDEX_JSON    \"message\": \"$RULE_MESSAGE\",\n"
-            INDEX_JSON="$INDEX_JSON    \"severity\": \"$RULE_SEVERITY\",\n"
-            INDEX_JSON="$INDEX_JSON    \"description\": \"$METADATA_DESCRIPTION\",\n"
-            INDEX_JSON="$INDEX_JSON    \"tags\": $TAGS_ARRAY\n"
-            INDEX_JSON="$INDEX_JSON  }"
           done
 
-          INDEX_JSON="$INDEX_JSON\n  ]\n}\n"
+          # Create the final index object
+          FINAL_JSON=$(jq -n --argjson rules "$JSON_RULES" '{version: 1, rules: $rules}')
 
-          # Write the index file
-          echo "$INDEX_JSON" > index.json
+          # Write the pretty-printed JSON to the index file
+          echo "$FINAL_JSON" | jq '.' > index.json
 
           echo "✅ Generated index.json with $(echo "$RULE_FILES" | wc -l) rules"
 
       - name: Validate generated index.json
         run: |
           echo "🔍 Validating generated index.json..."
-          if [ ! -f "index.json" ]; then
-            echo "❌ index.json file not found"
-            exit 1
-          fi
-
-          # Basic validation - check if file has content and contains expected structure
-          if ! grep -q '"rules"' index.json; then
-            echo "❌ index.json doesn't contain expected 'rules' field"
+          if ! jq empty index.json 2>/dev/null; then
+            echo "❌ Invalid JSON generated:"
             cat index.json
             exit 1
           fi
 
-          if ! grep -q '"version"' index.json; then
-            echo "❌ index.json doesn't contain expected 'version' field"
-            cat index.json
-            exit 1
-          fi
-
-          # Count rules by looking for rule IDs
-          RULE_COUNT=$(grep -c '"id":' index.json || echo "0")
-          echo "✅ Generated index.json with $RULE_COUNT rules"
+          RULE_COUNT=$(jq '.rules | length' index.json)
+          echo "✅ Valid JSON with $RULE_COUNT rules"
 
       - name: Commit and push index.json
         run: |
