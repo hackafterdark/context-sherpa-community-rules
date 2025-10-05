@@ -1,0 +1,21 @@
+id: ast-grep-go-security-insecure-cgi-module
+language: go
+message: "Avoid using net/http/cgi package due to vulnerability to httpoxy attacks (CVE-2015-5386)"
+severity: warning
+metadata:
+  author: context-sherpa
+  tags: security, vulnerability, httpoxy, cgi
+  description: "Detects usage of the vulnerable net/http/cgi package which is susceptible to httpoxy attacks"
+  owasp:
+    - A03:2017 - Sensitive Data Exposure
+    - A02:2021 - Cryptographic Failures
+  cwe:
+    - "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+rule:
+  any:
+    - pattern: |
+        import "net/http/cgi"
+      kind: import_spec
+    - pattern: |
+        cgi.$FUNC(...)
+      kind: call_expression

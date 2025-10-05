@@ -154,12 +154,52 @@ metadata:
   description: "Clear explanation" # Required for understanding
 ```
 
+**Security Rules Requirements:**
+For security-related rules, additional metadata fields are required:
+- **OWASP and CWE classifications**: Include relevant OWASP Top 10 categories and CWE identifiers when applicable
+- **Security tags**: Always include "security" and "vulnerability" tags for security rules
+- **Example security rule metadata** (replace placeholders with appropriate classifications for your specific rule):
+  ```yaml
+  metadata:
+    author: "contributor-username"
+    tags: "security,vulnerability,injection"
+    description: "Detects potential security vulnerabilities"
+    owasp:
+      - "AXX:YYYY - Category Name"  # Replace with relevant OWASP classification
+    cwe:
+      - "CWE-ID: Description"       # Replace with relevant CWE classification
+  ```
+
 **Tag Categories:**
 - **Security**: authentication, injection, validation, etc.
 - **Performance**: optimization, memory, efficiency
 - **Best Practices**: style, maintainability, design
 - **Error Handling**: exceptions, validation, resilience
 - **Code Quality**: complexity, duplication, readability
+
+### 8.1 Testing with Context-Sherpa MCP Server
+
+**When the context-sherpa MCP server is available, AI agents should use it for enhanced rule testing:**
+
+The `context-sherpa` MCP server provides the `scan_path` tool which is ideal for testing rules against their test directories:
+
+```yaml
+# Example usage for testing a specific rule's test cases
+scan_path:
+  path: "ast-grep/tests/go/security/rule-name/"
+```
+
+**Benefits of MCP Server Testing:**
+- **Integrated Testing**: Test rules directly against their designated test directories
+- **Multiple File Support**: Efficiently scan entire test directories containing both valid and invalid examples
+- **Consistent Environment**: Ensures rules work correctly in the project's testing environment
+- **Early Validation**: Catch issues before manual testing or CLI-based validation
+
+**When to Use MCP Server Testing:**
+- After creating or modifying rules
+- When validating rule effectiveness against test cases
+- Before finalizing rule contributions
+- For regression testing when updating existing rules
 
 ## Contribution Workflow
 
@@ -171,7 +211,8 @@ metadata:
 4. **Write Rule YAML**: Follow exact structure requirements
 5. **Create Test Cases**: Both valid and invalid examples
 6. **Validate Locally**: Test with ast-grep CLI if possible
-7. **Document Clearly**: Explain what the rule does and why it matters
+7. **Test with MCP Server**: If context-sherpa MCP server is available, use `scan_path` tool to validate rule against test cases
+8. **Document Clearly**: Explain what the rule does and why it matters
 
 ### 10. Common Pitfalls to Avoid
 
@@ -203,6 +244,17 @@ ast-grep scan --rule path/to/rule.yml --debug
 
 # Check for existing similar rules
 ast-grep scan --rule path/to/rule.yml path/to/existing/files/
+```
+
+**For MCP server testing (when context-sherpa is available):**
+
+```yaml
+# Example: Test a rule using context-sherpa MCP server
+use_mcp_tool:
+  server_name: "context-sherpa"
+  tool_name: "scan_path"
+  arguments:
+    path: "ast-grep/tests/go/security/rule-name/"
 ```
 
 ## Success Criteria
