@@ -8,8 +8,8 @@ metadata:
   description: "Detects the use of fmt.Sprintf in database calls, which is a common SQL injection vulnerability."
 rule:
   any:
-    - pattern: $DB.Exec(ctx, fmt.Sprintf($$$))
-    - pattern: $DB.ExecContext(ctx, fmt.Sprintf($$$))
-    - pattern: $DB.Query(ctx, fmt.Sprintf($$$))
-    - pattern: $DB.QueryRow(ctx, fmt.Sprintf($$$))
-    - pattern: $DB.QueryRowContext(ctx, fmt.Sprintf($$$))
+    - pattern: $DB.Exec($$$, fmt.Sprintf($$$))
+    - pattern: $DB.ExecContext($$$, fmt.Sprintf($$$))
+    - pattern: $DB.Query($$$, fmt.Sprintf($$$))
+    - pattern: $DB.QueryRow($$$, fmt.Sprintf($$$))
+    - pattern: $DB.QueryRowContext($$$, fmt.Sprintf($$$))

@@ -12,8 +12,8 @@ rule:
         $ERR := $FUNC( $$$ )
     - not:
         any:
-          - pattern: |
-              $ERR := $FUNC( $$$ )
-              if $ERR != nil {
+          - follows:
+              pattern: |
+                if $ERR != nil {
           - pattern: |
               if $ERR := $FUNC( $$$ ); $ERR != nil {
