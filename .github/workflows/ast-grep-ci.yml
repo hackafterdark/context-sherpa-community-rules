@@ -2,8 +2,6 @@ name: Validate ast-grep Rules
 
 on:
   pull_request:
-    paths:
-      - 'ast-grep/**'
 
 jobs:
   validate-rules:
