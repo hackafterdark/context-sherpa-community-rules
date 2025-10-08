@@ -31,7 +31,7 @@ jobs:
       - name: Download ast-grep binary for tests
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          curl -L -o ast-grep.zip https://github.com/ast-grep/ast-grep/releases/latest/download/ast-grep-x86_64-unknown-linux-gnu.zip
+          curl -L -o ast-grep.zip https://github.com/ast-grep/ast-grep/releases/download/latest/app-x86_64-unknown-linux-gnu.zip
           unzip -o ast-grep.zip
           # Verify ast-grep binary works
           if [ -f "ast-grep" ]; then
