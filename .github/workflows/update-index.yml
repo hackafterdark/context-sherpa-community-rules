@@ -34,7 +34,7 @@ jobs:
           echo "🔍 Scanning rules directory for YAML files..."
 
           # Find all rule YAML files
-          RULE_FILES=$(find ast-grep/rules -name "*.yml" -type f)
+          RULE_FILES=$(find rules -name "*.yml" -type f)
 
           if [ -z "$RULE_FILES" ]; then
             echo "❌ No rule files found!"
@@ -69,7 +69,7 @@ jobs:
             METADATA_TAGS=$(grep -A 10 '^metadata:' "$rule_file" | grep 'tags:' | head -1 | sed 's/.*tags: *//' | tr -d '"' | tr -d "'" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
 
             # Get relative path for the rule file
-            RULE_PATH=$(echo "$rule_file" | sed 's|^ast-grep/||')
+            RULE_PATH=$(echo "$rule_file")
 
             # Create a JSON object for the current rule
             RULE_JSON=$(jq -n \

@@ -1,4 +1,4 @@
-id: go-no-sprintf-in-db-call
+id: go-security-no-sprintf-in-db-call
 valid:
   - |
     package main

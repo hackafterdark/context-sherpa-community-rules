@@ -9,7 +9,7 @@ This document provides specific guidelines for AI agents contributing to the ast
 **All rules must follow this exact YAML structure:**
 
 ```yaml
-id: tool-language-category-rule-name
+id: language-category-rule-name
 language: target-language
 message: "Brief, actionable description of what this rule detects"
 severity: error|warning|info
@@ -22,7 +22,7 @@ rule:
 ```
 
 **Critical Points:**
-- `id` must follow format: `{tool}-{language}-{category}-{descriptive-name}`
+- `id` must follow format: `{language}-{category}-{descriptive-name}`
 - `author` field MUST be in `metadata` section, not at root level
 - `message` should be concise but specific enough to understand the issue
 - `tags` should be lowercase, comma-separated, relevant keywords
@@ -49,10 +49,23 @@ rule:
 ```
 
 #### Leverage ast-grep Features
-- Use `any` for multiple patterns that should trigger the rule
-- Use `all` for compound conditions
-- Use `not` to exclude false positives
-- Consider `kind` constraints for more precise matching
+- Use `any` for multiple patterns that should trigger the rule.
+- Use `all` for compound conditions.
+- Use `not` to exclude false positives.
+- Consider `kind` constraints for more precise matching.
+- Use `context` and `selector` for sub-expression matching when a pattern is not valid standalone code.
+- Use `constraints` with `regex` to match meta-variables against a pattern (e.g., function names starting with a prefix).
+
+**Context for Sub-Expressions:**
+If a pattern is not a valid piece of code on its own, use `context` to provide a valid surrounding structure and `selector` to target the specific node.
+
+```yaml
+# ✅ Good: Matching a key-value pair in JSON
+rule:
+  pattern:
+    context: '{"key": "$VAL"}'
+    selector: pair
+```
 
 #### Common Pattern Examples
 ```yaml
@@ -217,9 +230,11 @@ scan_path:
 ### 10. Common Pitfalls to Avoid
 
 **Pattern Issues:**
-- ❌ Overly broad patterns that match too much
-- ❌ Patterns that don't account for edge cases
-- ❌ Missing proper escaping in string patterns
+- ❌ Overly broad patterns that match too much.
+- ❌ Patterns that don't account for edge cases.
+- ❌ Missing proper escaping in string patterns.
+- ❌ Using `kind` and `pattern` as separate rules to filter a pattern. Use a `pattern` object with `context` and `selector` instead.
+- ❌ Mixing meta-variables with prefixes/suffixes (e.g., `use$HOOK`). Use `constraints` with `regex` instead.
 
 **Test Issues:**
 - ❌ Test files that don't actually trigger/avoid the rule
@@ -268,3 +283,19 @@ use_mcp_tool:
 - ✅ Be maintainable and understandable
 
 These guidelines ensure AI agents can effectively contribute high-quality, validated rules that help developers write better code while maintaining consistency with the repository's standards and automation requirements.
+
+## Advanced Topics & Debugging
+
+### Meta-Variable Naming
+- Start meta-variables with a `$` sign, followed by uppercase letters (A-Z), underscores (`_`), or digits (1-9).
+- A meta-variable must represent a single AST node.
+- By default, meta-variables match named AST nodes. Use `$$` (e.g., `$$UNNAMED`) to match unnamed nodes.
+
+### Rule Matching Order
+- Rule matching is sequential. The order in an `all` block matters, as meta-variables captured in earlier rules constrain later ones.
+- An unordered rule object (not in an `all` block) has an implementation-defined order. For explicit ordering, always use `all`.
+
+### Debugging Rules
+- **Use the Playground**: Test patterns and rules in the [ast-grep playground](https://ast-grep.github.io/playground.html).
+- **Simplify**: Reduce the rule to the minimal reproducible case.
+- **Check CLI vs. Playground**: Discrepancies can arise from different parser versions or text encodings. Use `ast-grep run -p <PATTERN> --debug-query ast` to inspect the AST as seen by the CLI.
