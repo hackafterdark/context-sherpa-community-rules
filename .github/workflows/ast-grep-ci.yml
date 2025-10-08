@@ -21,8 +21,8 @@ jobs:
         uses: tj-actions/changed-files@v44
         with:
           files: |
-            ast-grep/rules/**/*.yml
-            ast-grep/tests/**/*.{bash,bats,cgi,command,env,fcgi,ksh,sh,sh.in,tmux,tool,zsh,c,h,cc,hpp,cpp,c++,hh,cxx,cu,ino,cs,css,ex,exs,go,hs,html,htm,xhtml,java,cjs,js,mjs,jsx,json,kt,ktm,kts,lua,nix,php,py,py3,pyi,bzl,rb,rbw,gemspec,rs,scala,sc,sbt,sol,swift,ts,cts,mts,tsx,yml,yaml}
+            rules/**/*.yml
+            rule-tests/**/*.yml
 
       - name: Install dependencies
         run: |
@@ -32,86 +32,15 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         if: steps.changed-files.outputs.any_changed == 'true'
 
-      - name: Validate rule and test pairs
+      - name: Validate rules with ast-grep test
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          echo "Changed files:"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}"
-
-          # Get all changed rule files
-          RULE_FILES=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E 'ast-grep/rules/.*\.yml' | tr '\n' ' ')
-
-          if [ -n "$RULE_FILES" ]; then
-            echo "Validating rule files: $RULE_FILES"
-
-            for rule_file in $RULE_FILES; do
-              echo "Processing rule: $rule_file"
-
-              # Extract rule ID from the YAML file
-              RULE_ID=$(grep '^id:' "$rule_file" | head -1 | sed 's/id: *//' | tr -d ' ')
-              RULE_LANG=$(grep '^language:' "$rule_file" | head -1 | sed 's/language: *//' | tr -d ' ')
-
-              echo "Rule ID: $RULE_ID"
-              echo "Rule Language: $RULE_LANG"
-
-              # Find corresponding test directory and files
-              TEST_DIR=$(echo "$rule_file" | sed 's|ast-grep/rules/|ast-grep/tests/|; s|\.yml||')
-              VALID_FILE=$(find "$TEST_DIR" -type f -name "valid.*" | head -n 1)
-              INVALID_FILE=$(find "$TEST_DIR" -type f -name "invalid.*" | head -n 1)
-
-              echo "Looking for test files in: $TEST_DIR"
-
-              # Check if test files exist
-              if [ -z "$VALID_FILE" ]; then
-                echo "❌ Missing valid test file in $TEST_DIR"
-                exit 1
-              fi
-              echo "  Found Valid file: $VALID_FILE"
-
-              if [ -z "$INVALID_FILE" ]; then
-                echo "❌ Missing invalid test file in $TEST_DIR"
-                exit 1
-              fi
-              echo "  Found Invalid file: $INVALID_FILE"
-
-              echo "✅ Test files found"
-
-              # Test that valid file passes (should have 0 violations)
-              echo "Testing valid file against rule..."
-              VALID_VIOLATIONS=$(sg scan --rule "$rule_file" "$VALID_FILE" --json | jq length)
-
-              if [ "$VALID_VIOLATIONS" -ne 0 ]; then
-                echo "❌ Valid file should not trigger rule, but found $VALID_VIOLATIONS violations"
-                sg scan --rule "$rule_file" "$VALID_FILE" --json
-                exit 1
-              fi
-
-              echo "✅ Valid file correctly passes rule (0 violations)"
-
-              # Test that invalid file fails (should have 1+ violations)
-              echo "Testing invalid file against rule..."
-              INVALID_VIOLATIONS=$(sg scan --rule "$rule_file" "$INVALID_FILE" --json | jq length)
-
-              if [ "$INVALID_VIOLATIONS" -eq 0 ]; then
-                echo "❌ Invalid file should trigger rule, but found 0 violations"
-                exit 1
-              fi
-
-              echo "✅ Invalid file correctly triggers rule ($INVALID_VIOLATIONS violations)"
-
-              echo "🎉 Rule $RULE_ID validation passed!"
-              echo "---"
-            done
-
-          else
-            echo "ℹ️ No rule files changed in this PR"
-          fi
+          echo "Running ast-grep test framework..."
+          ast-grep test --skip-snapshot-tests
 
       - name: Summary
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           echo "## ✅ Rule Validation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Rule | Status | Valid File | Invalid File |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|------------|--------------|" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All rules validated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "All ast-grep rules and tests validated successfully using the test framework." >> $GITHUB_STEP_SUMMARY

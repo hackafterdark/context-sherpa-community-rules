@@ -35,10 +35,10 @@ git clone https://github.com/your-username/context-sherpa-community-rules.git
 cd context-sherpa-community-rules
 
 # Explore existing rules by language and category
-ls ast-grep/rules/
+ls rules/
 
 # Check out some example rules to understand the patterns
-cat ast-grep/rules/go/security/sql-injection.yml
+cat rules/go/security/sql-injection.yml
 ```
 
 ### 2. Prerequisites
@@ -102,10 +102,10 @@ Check if similar rules already exist:
 
 ```bash
 # Search for similar rules by pattern
-grep -r "sql-injection" ast-grep/rules/
+grep -r "sql-injection" rules/
 
 # Check rules in the same language/category
-ls ast-grep/rules/go/security/
+ls rules/go/security/
 ```
 
 ### Step 3: Design Your Pattern
@@ -188,42 +188,35 @@ Every rule **must** include corresponding test files to ensure it works correctl
 ### Test File Structure
 
 ```
-tests/
+rule-tests/
 └── [language]/
     └── [category]/
-        └── [rule-name]/
-            ├── valid.ext      # Code that should NOT trigger rule
-            └── invalid.ext    # Code that SHOULD trigger rule
+        └── [rule-name]-test.yml  # YAML file with valid/invalid test cases
 ```
 
-### Valid Test Files (Should Pass)
+### Test Files (YAML Format)
 
-Include realistic code examples that follow best practices:
+Test cases are embedded directly in YAML files:
 
-```go
-// tests/go/security/sql-injection/valid.go
-func goodExample() {
-    query := "SELECT * FROM users WHERE id = ?"
-    row := db.QueryRow(query, userID)  // ✅ Safe parameterized query
-}
-```
-
-**Requirements:**
-- Demonstrate the correct way to handle the situation
-- Include multiple variations when relevant
-- Use syntactically correct code
-- Show realistic usage patterns
-
-### Invalid Test Files (Should Trigger Rule)
-
-Demonstrate the exact anti-pattern the rule detects:
-
-```go
-// tests/go/security/sql-injection/invalid.go
-func badExample() {
-    query := fmt.Sprintf("SELECT * FROM users WHERE id = %d", userID)  // ❌ SQL injection
-    row := db.QueryRow(query)
-}
+```yaml
+# rule-tests/go/security/sql-injection-test.yml
+id: ast-grep-go-sql-injection
+valid:
+  - |
+    package main
+    import "database/sql"
+    func goodExample() {
+        query := "SELECT * FROM users WHERE id = ?"
+        row := db.QueryRow(query, userID)  // ✅ Safe parameterized query
+    }
+invalid:
+  - |
+    package main
+    import "fmt"
+    func badExample() {
+        query := fmt.Sprintf("SELECT * FROM users WHERE id = %d", userID)  // ❌ SQL injection
+        row := db.QueryRow(query)
+    }
 ```
 
 **Requirements:**
@@ -239,17 +232,26 @@ func badExample() {
 Write your YAML rule file following the exact format specified above. Place it in the appropriate directory:
 
 ```
-ast-grep/rules/[language]/[category]/[your-rule-name].yml
+rules/[language]/[category]/[your-rule-name].yml
 ```
 
-### 2. Add Test Files
+### 2. Create Test File
 
-Create both `valid` and `invalid` test cases in the corresponding test directory:
+Create a test file with `valid` and `invalid` test cases:
 
 ```
-tests/[language]/[category]/[your-rule-name]/
-├── valid.ext      # Code that should pass
-└── invalid.ext    # Code that should trigger rule
+rule-tests/[language]/[category]/[your-rule-name]-test.yml
+```
+
+**Test file format:**
+```yaml
+id: your-rule-id
+valid:
+  - |
+    // Code that should NOT trigger the rule
+invalid:
+  - |
+    // Code that SHOULD trigger the rule
 ```
 
 ### 3. Test Locally
@@ -257,14 +259,11 @@ tests/[language]/[category]/[your-rule-name]/
 Validate your rule works as expected:
 
 ```bash
-# Test your specific rule
-ast-grep scan --rule ast-grep/rules/go/security/my-rule.yml tests/go/security/my-rule/
+# Test using the ast-grep test framework
+ast-grep test --skip-snapshot-tests
 
-# Verify it finds violations in invalid files
-ast-grep scan --rule ast-grep/rules/go/security/my-rule.yml tests/go/security/my-rule/invalid.go
-
-# Verify it finds no violations in valid files
-ast-grep scan --rule ast-grep/rules/go/security/my-rule.yml tests/go/security/my-rule/valid.go
+# Or test individual rules
+ast-grep scan --rule rules/go/security/my-rule.yml --debug
 ```
 
 ### 4. Submit a Pull Request
@@ -296,10 +295,10 @@ All pull requests are automatically validated through GitHub Actions:
 ### Automated Checks
 
 1. **Test Validation**: Ensures test files exist for every rule
-2. **Rule Testing**: Runs ast-grep against test files:
-   - Must find violations in `invalid` files
-   - Must find no violations in `valid` files
-3. **YAML Validation**: Checks rule format and syntax
+2. **Rule Testing**: Runs `ast-grep test --skip-snapshot-tests`:
+   - Validates all rules against their embedded test cases
+   - Reports pass/fail status with detailed diagnostics
+3. **YAML Validation**: Checks rule and test file format and syntax
 4. **Auto-indexing**: Updates `index.json` after successful merge
 
 ### Manual Review
@@ -373,8 +372,9 @@ If you find problems with existing rules:
 
 - **ast-grep Documentation**: [Official Guide](https://ast-grep.github.io/)
 - **YAML Reference**: [Pattern Syntax](https://ast-grep.github.io/reference/yaml.html)
-- **Existing Rules**: Browse `ast-grep/rules/` for examples
-- **Test Files**: Study `ast-grep/tests/` for testing patterns
+- **Testing Guide**: [Test Your Rules](https://ast-grep.github.io/guide/test-rule.html)
+- **Existing Rules**: Browse `rules/` for examples
+- **Test Files**: Study `rule-tests/` for testing patterns
 
 ### Getting Support
 
@@ -386,7 +386,11 @@ If you find problems with existing rules:
 
 **Q: How do I test my rule locally?**
 ```bash
-ast-grep scan --rule path/to/your-rule.yml path/to/test/files/
+# Using the ast-grep test framework
+ast-grep test --skip-snapshot-tests
+
+# Or test individual rules
+ast-grep scan --rule rules/go/security/my-rule.yml --debug
 ```
 
 **Q: What languages are supported?**

@@ -8,9 +8,9 @@ metadata:
   description: "Detects the use of string formatting functions like fmt.Sprintf inside database calls, which is a common SQL injection vector. Promotes the use of safe, parameterized queries."
 rule:
   any:
-    - pattern: $DB.Exec(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.ExecContext(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.Query(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.QueryContext(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.QueryRow(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.QueryRowContext(..., fmt.Sprintf($$$), ...)
+    - pattern: $DB.Exec($$$, fmt.Sprintf($$$))
+    - pattern: $DB.ExecContext($$$, fmt.Sprintf($$$))
+    - pattern: $DB.Query($$$, fmt.Sprintf($$$))
+    - pattern: $DB.QueryContext($$$, fmt.Sprintf($$$))
+    - pattern: $DB.QueryRow($$$, fmt.Sprintf($$$))
+    - pattern: $DB.QueryRowContext($$$, fmt.Sprintf($$$))

@@ -21,16 +21,14 @@ This project is powered by [**ast-grep**](https://ast-grep.github.io/) - a light
 
 ```
 context-sherpa-community-rules/
-├── ast-grep/
-│   ├── rules/                    # ast-grep rules organized by language/tool
-│   │   └── go/security/
-│   │       └── sql-injection.yml
-│   └── tests/                   # Test files for rule validation
-│       └── go/security/
-│           └── sql-injection/
-│               ├── valid.go      # Code that should pass the rule
-│               └── invalid.go    # Code that should trigger the rule
-├── index.json                   # Auto-generated catalog of all rules
+├── rules/                        # ast-grep rules organized by language/category
+│   └── go/security/
+│       └── sql-injection.yml     # Rule definition with pattern matching
+├── rule-tests/                   # Test files for rule validation
+│   └── go/security/
+│       └── sql-injection-test.yml # Test cases (valid/invalid examples)
+├── index.json                    # Auto-generated catalog of all rules
+├── sgconfig.yml                  # ast-grep configuration
 └── README.md
 ```
 

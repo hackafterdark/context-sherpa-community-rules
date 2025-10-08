@@ -14,8 +14,7 @@ metadata:
 rule:
   any:
     - pattern: |
-        import "net/http/cgi"
-      kind: import_spec
+        net/http/cgi
     - pattern: |
-        cgi.$FUNC(...)
+        cgi.Serve($_)
       kind: call_expression

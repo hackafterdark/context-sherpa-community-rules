@@ -1,0 +1,123 @@
+id: ast-grep-go-sql-injection
+valid:
+  - |
+    package main
+
+    import (
+    	"context"
+    	"database/sql"
+    	"log"
+    )
+
+    func goodQuery(db *sql.DB, userID string) {
+    	// This is safe - uses parameterized query
+    	row := db.QueryRow("SELECT * FROM users WHERE id = ?", userID)
+    	var name string
+    	err := row.Scan(&name)
+    	if err != nil {
+    		log.Printf("Error scanning row: %v", err)
+    		return
+    	}
+    }
+  - |
+    package main
+
+    import (
+    	"database/sql"
+    )
+
+    func goodExec(db *sql.DB, email string) error {
+    	// This is safe - uses parameterized query
+    	_, err := db.Exec("INSERT INTO users (email) VALUES (?)", email)
+    	return err
+    }
+  - |
+    package main
+
+    import (
+    	"context"
+    	"database/sql"
+    )
+
+    func goodExecContext(ctx context.Context, db *sql.DB, name string) error {
+    	// This is safe - uses parameterized query with context
+    	_, err := db.ExecContext(ctx, "UPDATE users SET name = ? WHERE id = 1", name)
+    	return err
+    }
+invalid:
+  - |
+    package main
+
+    import (
+    	"context"
+    	"database/sql"
+    	"fmt"
+    	"log"
+    )
+
+    func badQuery(db *sql.DB, userID int) {
+    	// This is vulnerable - uses string formatting in query
+    	row := db.QueryRow(fmt.Sprintf("SELECT * FROM users WHERE id = %d", userID))
+    	var name string
+    	err := row.Scan(&name)
+    	if err != nil {
+    		log.Printf("Error scanning row: %v", err)
+    		return
+    	}
+    }
+  - |
+    package main
+
+    import (
+    	"database/sql"
+    	"fmt"
+    )
+
+    func badExec(db *sql.DB, email string) error {
+    	// This is vulnerable - uses string formatting in exec
+    	_, err := db.Exec(fmt.Sprintf("INSERT INTO users (email) VALUES ('%s')", email))
+    	return err
+    }
+  - |
+    package main
+
+    import (
+    	"context"
+    	"database/sql"
+    	"fmt"
+    )
+
+    func badExecContext(ctx context.Context, db *sql.DB, name string) error {
+    	// This is vulnerable - uses string formatting in exec context
+    	_, err := db.ExecContext(ctx, fmt.Sprintf("UPDATE users SET name = '%s' WHERE id = 1", name))
+    	return err
+    }
+  - |
+    package main
+
+    import (
+    	"database/sql"
+    	"fmt"
+    )
+
+    func badQueryRow(db *sql.DB, tableName string) {
+    	// This is vulnerable - uses string formatting in query row
+    	row := db.QueryRow(fmt.Sprintf("SELECT * FROM %s", tableName))
+    	var count int
+    	row.Scan(&count)
+    }
+  - |
+    package main
+
+    import (
+    	"context"
+    	"database/sql"
+    	"fmt"
+    )
+
+    func badQueryRowContext(ctx context.Context, db *sql.DB, userInput string) {
+    	// This is vulnerable - uses string formatting in query row context
+    	row := db.QueryRowContext(ctx, fmt.Sprintf("SELECT * FROM users WHERE name = '%s'", userInput))
+    	var id int
+    	row.Scan(&id)
+    }
