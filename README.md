@@ -45,7 +45,7 @@ We welcome contributions from the community! Help us expand our collection of as
 
 ### Key Requirements
 
-- **Rule Format**: YAML files following the `tool-language-category-rule-name` naming convention
+- **Rule Format**: YAML files following the `language-category-rule-name` naming convention
 - **Testing**: Every rule must include `valid` and `invalid` test cases
 - **Validation**: All PRs validated through GitHub Actions before merging
 - **Languages**: Support for 16+ languages including Go, Python, JavaScript, Rust, and more

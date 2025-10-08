@@ -1,9 +1,9 @@
-id: go-no-sprintf-in-db-call
+id: go-security-no-sprintf-in-db-call
 language: go
 severity: error
 message: "Database query uses fmt.Sprintf, which is a SQL injection vulnerability. Use parameterized queries with placeholders ($1, $2, etc.) instead."
 metadata:
-  author: new-contributor
+  author: hackafterdark
   tags: security, injection, go
   description: "Detects the use of fmt.Sprintf in database calls, which is a common SQL injection vulnerability."
 rule:

@@ -1,4 +1,4 @@
-id: ast-grep-go-sql-injection
+id: go-security-sql-injection
 valid:
   - |
     package main

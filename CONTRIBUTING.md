@@ -158,7 +158,7 @@ rule:
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| `id` | Unique identifier using format: `{tool}-{language}-{category}-{descriptive-name}` | `ast-grep-go-security-sql-injection` |
+| `id` | Unique identifier using format: `{language}-{category}-{descriptive-name}` | `go-security-sql-injection` |
 | `language` | Target programming language | `go`, `python`, `javascript` |
 | `message` | Concise description shown when rule matches | `"Potential SQL injection vulnerability detected"` |
 | `severity` | Impact level | `error`, `warning`, `info` |
@@ -174,12 +174,12 @@ rule:
 
 ### Rule ID Naming Convention
 
-Follow this format: `{tool}-{language}-{category}-{descriptive-name}`
+Follow this format: `{language}-{category}-{descriptive-name}`
 
 **Examples:**
-- `ast-grep-go-security-sql-injection`
-- `ast-grep-python-best-practices-unused-variable`
-- `ast-grep-javascript-error-handling-missing-catch`
+- `go-security-sql-injection`
+- `python-best-practices-unused-variable`
+- `javascript-error-handling-missing-catch`
 
 ## 🧪 Testing Requirements
 
@@ -200,7 +200,7 @@ Test cases are embedded directly in YAML files:
 
 ```yaml
 # rule-tests/go/security/sql-injection-test.yml
-id: ast-grep-go-sql-injection
+id: go-sql-injection
 valid:
   - |
     package main
@@ -276,7 +276,7 @@ ast-grep scan --rule rules/go/security/my-rule.yml --debug
 3. **Commit** your changes:
    ```bash
    git add .
-   git commit -m "Add new rule: ast-grep-go-security-my-pattern"
+   git commit -m "Add new rule: go-security-my-pattern"
    ```
 4. **Push** your branch:
    ```bash

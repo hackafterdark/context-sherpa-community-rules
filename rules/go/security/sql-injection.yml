@@ -1,9 +1,9 @@
-id: ast-grep-go-sql-injection
+id: go-security-sql-injection
 language: go
 message: "Database query uses string formatting (e.g., fmt.Sprintf), which is a SQL injection vulnerability. Use parameterized queries instead."
 severity: error
 metadata:
-  author: context-sherpa-community
+  author: hackafterdark
   tags: security, sql, database, injection
   description: "Detects the use of string formatting functions like fmt.Sprintf inside database calls, which is a common SQL injection vector. Promotes the use of safe, parameterized queries."
 rule:
