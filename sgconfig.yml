@@ -1,2 +1,7 @@
 ruleDirs:
-  - ast-grep/rules
+  - rules/go/security
+  - rules
+
+testConfigs:
+  - testDir: rule-tests/go/security
+  - testDir: rule-tests
