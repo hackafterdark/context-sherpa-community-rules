@@ -1,0 +1,35 @@
+id: go-best-practices-getter-naming
+language: go
+rule: rules/go/best-practices/getter-naming.yml
+valid:
+  - |
+    package main
+
+    type MyType struct {
+    	owner string
+    }
+
+    func (t *MyType) Owner() string {
+    	return t.owner
+    }
+invalid:
+  - |
+    package main
+
+    type MyType struct {
+    	owner string
+    }
+
+    func (t *MyType) GetOwner() string {
+    	return t.owner
+    }
+  - |
+    package main
+
+    type myPrivateType struct {
+    	secret string
+    }
+
+    func (t *myPrivateType) getSecret() string {
+    	return t.secret
+    }
