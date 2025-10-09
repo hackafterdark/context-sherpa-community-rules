@@ -1,0 +1,16 @@
+id: go-best-practices-getter-naming
+language: go
+message: "Getter method names should not be prefixed with 'Get'. Rename to use the field name directly (e.g., 'Owner()' instead of 'GetOwner()')."
+severity: warning
+metadata:
+  author: Roo
+  tags: best-practices, naming, conventions, style
+  description: "Detects getter methods prefixed with 'Get', which is not idiomatic Go. Getters should be named after the field they retrieve, without the 'Get' prefix."
+rule:
+  all:
+    - any:
+        - kind: function_declaration
+        - kind: method_declaration
+    - has:
+        field: name
+        regex: "^(Get|get)[A-Z]"
