@@ -1,0 +1,12 @@
+id: go-best-practices-mixed-caps
+language: go
+message: "Identifier uses underscores instead of MixedCaps. In Go, use camelCase for multiword names."
+severity: warning
+metadata:
+  author: hackafterdark
+  tags: best-practices, naming, conventions, style
+  description: "Detects the use of underscores in identifiers, which is not idiomatic Go. The convention is to use MixedCaps or mixedCaps for multiword names."
+rule:
+  all:
+    - kind: identifier, type_identifier
+    - regex: "[a-zA-Z0-9]+_[a-zA-Z0-9]+"

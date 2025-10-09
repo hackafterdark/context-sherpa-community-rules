@@ -1,0 +1,21 @@
+id: go-best-practices-no-panic-in-production
+language: go
+message: "Avoid using panic in production code; use error returns instead. Panics should be reserved for unrecoverable errors."
+severity: warning
+metadata:
+  author: hackafterdark
+  tags: best-practices, error-handling, production, reliability
+  description: "Discourages the use of `panic` in production code. While `panic` is acceptable in `main` or `init` functions for setup failures, and common in test files, it should generally be avoided in favor of returning errors. This rule identifies `panic` calls outside of these accepted contexts."
+rule:
+  all:
+    - pattern: panic($$$)
+    - not:
+        inside:
+          any:
+            - pattern: func main() { $$$ }
+            - pattern: func init() { $$$ }
+            - pattern: func TestMain(m *testing.M) { $$$ }
+            - pattern: func $F(t *testing.T) { $$$ }
+            - pattern: func $F(b *testing.B) { $$$ }
+            - pattern: func $F(f *testing.F) { $$$ }
+          stopBy: end

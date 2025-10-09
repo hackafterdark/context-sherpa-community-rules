@@ -37,104 +37,130 @@ Valid languages for ast-grep: `C`, `Cpp`, `CSharp`, `Css`, `Go`, `Html`, `Java`,
 
 ### 3. Pattern Writing Best Practices
 
-#### Use Specific Patterns
+#### Atomic Rules: The Building Blocks
+Atomic rules match single AST nodes. Use them for precision.
+
+- **`pattern`**: Match code structure. For ambiguous syntax (e.g., a JS class field `a = 1`), use a `pattern` object with `context` and `selector`.
+  ```yaml
+  # Match a class field, not an assignment
+  rule:
+    pattern:
+      selector: field_definition
+      context: class A { $FIELD = $INIT }
+  ```
+- **`kind`**: Match a node by its type name (e.g., `if_statement`, `type_identifier`). This is essential when a pattern is too broad or hard to write.
+- **`regex`**: Match a node's text content. **Always combine with `kind` or `pattern`** to avoid performance issues and target the correct node.
+
+#### Composite Rules: Combining Logic
+Apply Boolean logic to a **single target node**.
+
+- **`all`**: The node must satisfy ALL sub-rules (AND logic).
+- **`any`**: The node must satisfy AT LEAST ONE sub-rule (OR logic).
+- **`not`**: The node must NOT satisfy the sub-rule.
+
+#### Relational Rules: Understanding Context
+Filter nodes based on their relationship to surrounding nodes. The structure is always `target_node relation surrounding_node`.
+
+- **`inside`**: The target node is a descendant of the surrounding node.
+- **`has`**: The target node has a descendant that is the surrounding node.
+- **`precedes`**: The target node appears before a sibling surrounding node.
+- **`follows`**: The target node appears after a sibling surrounding node.
+
+**Fine-Tuning Relational Rules:**
+- **`stopBy: end`**: This is a critical option. By default, relational rules only search immediate neighbors. Use `stopBy: end` to make the search traverse the entire AST (e.g., up to the root for `inside`, down to the leaves for `has`). This is often required for rules that need to understand the broader context of a file.
+- **`field`**: Restricts the search to a specific named child field (e.g., `key`, `body`). Only for `inside` and `has`.
+
+---
+
+### 4. Common Patterns & Solutions
+
+#### **Problem: Applying a `regex` to a captured metavariable (`$NAME`)**
+**Solution:** Use a composite `all` rule. The first part captures the node with a `pattern`, and the second part applies a `regex` to the captured metavariable.
+
 ```yaml
-# ✅ Good: Specific and targeted
-rule:
-  pattern: $DB.Exec(..., fmt.Sprintf($$$), ...)
-
-# ❌ Avoid: Too broad or generic
-rule:
-  pattern: fmt.Sprintf($$$)
-```
-
-#### Leverage ast-grep Features
-- Use `any` for multiple patterns that should trigger the rule.
-- Use `all` for compound conditions.
-- Use `not` to exclude false positives.
-- Consider `kind` constraints for more precise matching.
-- Use `context` and `selector` for sub-expression matching when a pattern is not valid standalone code.
-- Use `constraints` with `regex` to match meta-variables against a pattern (e.g., function names starting with a prefix).
-
-**Context for Sub-Expressions:**
-If a pattern is not a valid piece of code on its own, use `context` to provide a valid surrounding structure and `selector` to target the specific node.
-
-```yaml
-# ✅ Good: Matching a key-value pair in JSON
-rule:
-  pattern:
-    context: '{"key": "$VAL"}'
-    selector: pair
-```
-
-#### Common Pattern Examples
-```yaml
-# Multiple patterns (OR logic)
-rule:
-  any:
-    - pattern: $DB.Query(..., fmt.Sprintf($$$), ...)
-    - pattern: $DB.Exec(..., fmt.Sprintf($$$), ...)
-
-# Compound conditions (AND logic)
+# ✅ Correct: Find type names ending in DTO, DAO, etc.
 rule:
   all:
-    - pattern: $VAR = $VAL
-    - not:
-        pattern: $VAR := $VAL
+    - any: # First, find all type declarations and capture the name in $NAME
+        - pattern: type $NAME struct { $$$ }
+        - pattern: type $NAME interface { $$$ }
+    - pattern: $NAME # Then, apply the regex to the captured $NAME node
+      regex: ".+(DTO|DAO|Impl|Utils|Helper)$"
+```
 
-# Error detection pattern
+#### **Problem: Excluding matches within a specific context (e.g., inside test functions)**
+**Solution:** Use an `all` rule that combines a `pattern` with a `not` > `inside` clause. The `stopBy: end` is crucial here to ensure the entire file context is checked.
+
+```yaml
+# ✅ Correct: Find `panic` calls that are NOT inside main, init, or test functions
 rule:
-  pattern: |
-    $ERR := $FUNC( $$$ )
-  not:
-    follows:
-      pattern: |
-        if $ERR != nil {
+  all:
+    - pattern: panic($$$) # Find all panic calls
+    - not: # Exclude the ones that are...
+        inside: # ...inside any of these function patterns
+          any:
+            - pattern: func main() { $$$ }
+            - pattern: func init() { $$$ }
+            - pattern: func TestMain(m *testing.M) { $$$ }
+            - pattern: func $F(t *testing.T) { $$$ }
+            - pattern: func $F(b *testing.B) { $$$ }
+            - pattern: func $F(f *testing.F) { $$$ }
+          stopBy: end # IMPORTANT: Search all the way up to the file root
+```
+
+#### **Problem: Targeting only specific kinds of identifiers (e.g., type names vs. variable names)**
+**Solution:** Combine a `regex` with a `kind` rule. Use `any` if multiple kinds are valid targets.
+
+```yaml
+# ✅ Correct: Find identifiers with specific suffixes, but only if they are type names
+rule:
+  all:
+    - regex: ".+(DTO|DAO|Impl|Utils|Helper)$"
+    - any:
+        - kind: type_identifier
+        - kind: identifier # Can be included for broader matching if needed
 ```
 
 ## Test File Requirements
 
 ### 4. Test Structure Mandate
 
-**Every rule MUST have corresponding test files:**
+**Every rule MUST have a corresponding YAML test file.** This project uses `ast-grep`'s inline testing feature, where valid and invalid code snippets are embedded directly within the test YAML.
 
-```
-tests/
-└── [language]/
-    └── [category]/
-        └── [rule-name]/
-            ├── valid.ext      # Code that should NOT trigger rule
-            └── invalid.ext    # Code that SHOULD trigger rule
-```
+The test file must be located at: `rule-tests/[language]/[category]/[rule-name]-test.yml`
 
 ### 5. Test Content Guidelines
 
-#### Valid Files (Should Pass)
-- Include realistic code examples that follow best practices
-- Show the correct way to handle the situation the rule detects
-- Include multiple variations when relevant
-- Ensure code is syntactically correct
+The YAML test file must have the following structure:
 
-#### Invalid Files (Should Trigger Rule)
-- Demonstrate the exact anti-pattern the rule detects
-- Include multiple instances of the problematic pattern
-- Show realistic mistakes developers might make
-- Ensure violations are clear and unambiguous
-
-#### Example Test Cases
-```go
-// Valid test case - good practices
-func goodExample() {
-    query := "SELECT * FROM users WHERE id = ?"
-    row := db.QueryRow(query, userID)  // ✅ Safe parameterized query
-}
-
-// Invalid test case - violations
-func badExample() {
-    query := fmt.Sprintf("SELECT * FROM users WHERE id = %d", userID)  // ❌ SQL injection
-    row := db.QueryRow(query)
-}
+```yaml
+id: [rule-id] # Must match the id in the rule file
+language: [target-language]
+rule: [path/to/the/rule.yml]
+valid:
+  - |
+    # Code snippet that should NOT trigger the rule.
+    # Include multiple valid cases.
+    # This code should be syntactically correct.
+  - |
+    # Another valid code snippet.
+invalid:
+  - |
+    # Code snippet that SHOULD trigger the rule.
+    # Demonstrate the exact anti-pattern.
+  - |
+    # Another invalid code snippet to show variations.
 ```
+
+#### `valid` blocks (Should Pass)
+- Include realistic code examples that follow best practices.
+- Show the correct way to handle the situation the rule detects.
+- Include multiple variations when relevant.
+
+#### `invalid` blocks (Should Trigger Rule)
+- Demonstrate the exact anti-pattern the rule detects.
+- Include multiple instances of the problematic pattern if the rule should catch them all.
+- Show realistic mistakes developers might make.
 
 ## Quality Assurance Rules
 
