@@ -18,6 +18,22 @@
       ]
     },
     {
+      "id": "go-best-practices-getter-naming",
+      "tool": "ast-grep",
+      "path": "rules/go/best-practices/getter-naming.yml",
+      "language": "go",
+      "author": "hackafterdark",
+      "message": "Getter method names should not be prefixed with 'Get'. Rename to use the field name directly (e.g., 'Owner()' instead of 'GetOwner()').",
+      "severity": "warning",
+      "description": "Detects getter methods prefixed with 'Get', which is not idiomatic Go. Getters should be named after the field they retrieve, without the 'Get' prefix.",
+      "tags": [
+        "best-practices",
+        "naming",
+        "conventions",
+        "style"
+      ]
+    },
+    {
       "id": "go-best-practices-no-panic-in-production",
       "tool": "ast-grep",
       "path": "rules/go/best-practices/no-panic-in-production.yml",
