@@ -1,0 +1,32 @@
+id: go-best-practices-mixed-caps
+language: go
+rule: rules/go/best-practices/mixed-caps.yml
+valid:
+  - |
+    package main
+
+    var myVariable = "hello"
+    const MyConstant = 3.14
+    type MyStruct struct {
+    	MyField int
+    }
+    func MyFunction() {}
+invalid:
+  - |
+    package main
+
+    var my_variable = "world"
+  - |
+    package main
+
+    const MY_CONSTANT = 1
+  - |
+    package main
+
+    type my_struct struct {
+    	my_field int
+    }
+  - |
+    package main
+
+    func my_function() {}

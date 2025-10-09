@@ -1,0 +1,90 @@
+id: go-best-practices-non-idiomatic-suffixes
+valid:
+  - |
+    package main
+
+    // ✅ Good: Simple, idiomatic struct name
+    type User struct {
+        Name  string
+        Email string
+    }
+
+    // ✅ Good: Simple, idiomatic struct name
+    type Comment struct {
+        Text     string
+        AuthorID string
+    }
+
+    // ✅ Good: Service is part of name, not suffix
+    type OrderService struct {
+        // ...
+    }
+
+    // ✅ Good: Repository is idiomatic
+    type UserRepository struct {
+        // ...
+    }
+
+    // ✅ Good: Handler is idiomatic
+    type CommentHandler struct {
+        // ...
+    }
+
+    // ✅ Good: Manager can be legitimate for managing resources
+    type SessionManager struct {
+        // ...
+    }
+
+    // ✅ Good: Simple interface name
+    type Writer interface {
+        Write(data []byte) error
+    }
+
+    // ✅ Good: Type alias with simple name
+    type UserID = string
+
+invalid:
+  - |
+    package main
+
+    import "time"
+
+    // ❌ Bad: Non-idiomatic DTO suffix
+    type UserDTO struct {
+        Name  string
+        Email string
+    }
+
+    // ❌ Bad: Non-idiomatic DAO suffix
+    type CommentDAO struct {
+        Text     string
+        AuthorID string
+    }
+
+    // ❌ Bad: Non-idiomatic Impl suffix
+    type OrderServiceImpl struct {
+        // ...
+    }
+
+    // ❌ Bad: Non-idiomatic Utils suffix
+    type StringUtils struct {
+        // ...
+    }
+
+    // ❌ Bad: Non-idiomatic Helper suffix
+    type ValidationHelper struct {
+        // ...
+    }
+
+    // ❌ Bad: Multiple non-idiomatic patterns
+    type UserDTOHelper struct {
+        Name string
+    }
+
+    // ❌ Bad: Interface with non-idiomatic suffix
+    type ProcessorDAO interface {
+        Process() error
+    }
+
+    // ❌ Bad: Type alias with non-idiomatic suffix
+    type UserIDDTO = string

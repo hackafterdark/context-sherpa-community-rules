@@ -1,0 +1,44 @@
+id: go-best-practices-no-panic-in-production
+language: go
+rule: rules/go/best-practices/no-panic-in-production.yml
+valid:
+  - |
+    package main
+
+    import "testing"
+
+    func main() {
+      panic("setup failed")
+    }
+
+    func init() {
+      panic("init failed")
+    }
+
+    func TestSomething(t *testing.T) {
+      panic("test failed")
+    }
+
+    func BenchmarkSomething(b *testing.B) {
+      panic("benchmark failed")
+    }
+
+    func FuzzSomething(f *testing.F) {
+        panic("fuzz test failed")
+    }
+invalid:
+  - |
+    package main
+
+    func doSomething() {
+      panic("something went wrong")
+    }
+  - |
+    package main
+
+    import "fmt"
+
+    func anotherFunction() {
+      fmt.Println("doing something")
+      panic("another panic")
+    }

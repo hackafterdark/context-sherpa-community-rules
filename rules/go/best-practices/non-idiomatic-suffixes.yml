@@ -1,0 +1,12 @@
+id: go-best-practices-non-idiomatic-suffixes
+language: go
+message: "Struct name uses non-idiomatic suffix, consider using a more idiomatic Go name"
+severity: warning
+metadata:
+  author: hackafterdark
+  tags: best-practices, naming, conventions
+  description: "Detects struct and type names with non-idiomatic suffixes like DTO, DAO, Impl, Utils, Helper that don't follow Go naming conventions. Use simple, descriptive names instead."
+rule:
+  all:
+    - regex: ".+(DTO|DAO|Impl|Utils|Helper)$"
+      kind: type_identifier, identifier
