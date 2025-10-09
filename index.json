@@ -2,6 +2,53 @@
   "version": 1,
   "rules": [
     {
+      "id": "go-best-practices-mixed-caps",
+      "tool": "ast-grep",
+      "path": "rules/go/best-practices/mixed-caps.yml",
+      "language": "go",
+      "author": "hackafterdark",
+      "message": "Identifier uses underscores instead of MixedCaps. In Go, use camelCase for multiword names.",
+      "severity": "warning",
+      "description": "Detects the use of underscores in identifiers, which is not idiomatic Go. The convention is to use MixedCaps or mixedCaps for multiword names.",
+      "tags": [
+        "best-practices",
+        "naming",
+        "conventions",
+        "style"
+      ]
+    },
+    {
+      "id": "go-best-practices-no-panic-in-production",
+      "tool": "ast-grep",
+      "path": "rules/go/best-practices/no-panic-in-production.yml",
+      "language": "go",
+      "author": "hackafterdark",
+      "message": "Avoid using panic in production code; use error returns instead. Panics should be reserved for unrecoverable errors.",
+      "severity": "warning",
+      "description": "Discourages the use of `panic` in production code. While `panic` is acceptable in `main` or `init` functions for setup failures, and common in test files, it should generally be avoided in favor of returning errors. This rule identifies `panic` calls outside of these accepted contexts.",
+      "tags": [
+        "best-practices",
+        "error-handling",
+        "production",
+        "reliability"
+      ]
+    },
+    {
+      "id": "go-best-practices-non-idiomatic-suffixes",
+      "tool": "ast-grep",
+      "path": "rules/go/best-practices/non-idiomatic-suffixes.yml",
+      "language": "go",
+      "author": "hackafterdark",
+      "message": "Struct name uses non-idiomatic suffix, consider using a more idiomatic Go name",
+      "severity": "warning",
+      "description": "Detects struct and type names with non-idiomatic suffixes like DTO, DAO, Impl, Utils, Helper that don't follow Go naming conventions. Use simple, descriptive names instead.",
+      "tags": [
+        "best-practices",
+        "naming",
+        "conventions"
+      ]
+    },
+    {
       "id": "go-security-sql-injection",
       "tool": "ast-grep",
       "path": "rules/go/security/sql-injection.yml",
